@@ -58,3 +58,16 @@ For best results, include columns like:
 - Provide `OPENAI_API_KEY` via environment (or paste key in the app) and upload results.
 - The app sends summarized historical prediction/results context to OpenAI and receives factor multipliers, then stores them in the local learning profile.
 - If no key/package is available, the app gracefully falls back to local heuristic learning only.
+
+## Archives + prediction/result comparison
+- Use **View prediction archive for selected track** to browse all stored prediction cards by date.
+- Use **View results archive for selected track** to browse all uploaded result cards by date.
+- After uploading results, the app shows **Predictions vs Results** for the selected track/date card (race-by-race match flags).
+
+
+- You can upload **multiple results files at once**; the app groups and displays uploaded rows by **track/date** and stores them in the results archive.
+
+## BRIS Chart ZIP results support
+- Results uploader now accepts the BRIS chart ZIP bundle (e.g., `DMR07012005c.zip`) and parses chart files to extract race winners.
+- The parser prioritizes **Start file** official winners and can also fall back to ITM payoffs for winner identification.
+- Parsed winner rows are stored in the same track/date archives and feed prediction-vs-results comparisons and learning.

@@ -8,15 +8,20 @@ import streamlit as st
 from auto_weights import detect_surface, recommended_weights
 from brisnet_parser import group_by_race, parse_content
 from learning_store import (
+    compare_card_predictions_to_results,
     get_card_predictions,
+    get_track_predictions_archive,
+    get_track_results_archive,
     learn_from_results,
     load_learning_profile,
     load_predictions,
     record_card_predictions,
+    record_results_rows,
     save_learning_profile,
 )
 from openai_learning import suggest_learning_multipliers
 from pace_ai import build_pace_map, classify_race_pace
+from results_zip_parser import parse_results_zip
 from scoring import DEFAULT_FACTORS, compute_scores
 from us_tracks import track_options
 
@@ -176,17 +181,95 @@ if saved:
     st.caption(f"Stored predictions for {card_track} {card_date}")
     st.dataframe(saved, use_container_width=True, hide_index=True)
 
+archive_track = st.selectbox("Archive track", track_options(), index=track_options().index(card_track) if card_track in track_options() else 0)
+pred_archive = get_track_predictions_archive(archive_track)
+results_archive = get_track_results_archive(archive_track)
+
+archive_dates = sorted(set(pred_archive.keys()) | set(results_archive.keys()))
+archive_date = st.selectbox("Archive date", archive_dates, index=archive_dates.index(card_date) if card_date in archive_dates else 0) if archive_dates else None
+
+archive_col1, archive_col2 = st.columns(2)
+if archive_col1.button("View prediction archive"):
+    st.session_state["show_pred_archive"] = not st.session_state.get("show_pred_archive", False)
+if archive_col2.button("View results archive"):
+    st.session_state["show_results_archive"] = not st.session_state.get("show_results_archive", False)
+
+if st.session_state.get("show_pred_archive", False):
+    st.markdown(f"#### Prediction Archive: {archive_track}")
+    if not pred_archive:
+        st.info("No prediction cards saved for this track yet.")
+    elif archive_date and archive_date in pred_archive:
+        st.dataframe(pred_archive[archive_date], use_container_width=True, hide_index=True)
+    else:
+        for d, rows in sorted(pred_archive.items()):
+            with st.expander(f"{archive_track} {d} ({len(rows)} races)"):
+                st.dataframe(rows, use_container_width=True, hide_index=True)
+
+if st.session_state.get("show_results_archive", False):
+    st.markdown(f"#### Results Archive: {archive_track}")
+    if not results_archive:
+        st.info("No results cards saved for this track yet.")
+    elif archive_date and archive_date in results_archive:
+        st.dataframe(results_archive[archive_date], use_container_width=True, hide_index=True)
+    else:
+        for d, rows in sorted(results_archive.items()):
+            with st.expander(f"{archive_track} {d} ({len(rows)} races)"):
+                st.dataframe(rows, use_container_width=True, hide_index=True)
+
 st.subheader("Upload official results to learn")
-st.caption("Upload CSV with columns: track,date,race_number,winner_program or winner_horse")
+st.caption("Upload CSV(s) and/or BRIS chart ZIP(s). CSV columns: track,date,race_number,winner_program or winner_horse")
 use_openai_learning = st.checkbox("Use OpenAI to refine factor multipliers from accumulated cards", value=False)
 openai_key = st.text_input("OpenAI API key (optional if OPENAI_API_KEY env is set)", type="password") if use_openai_learning else ""
-results_file = st.file_uploader("Upload results CSV", type=["csv"], key="results_upload")
-if results_file is not None:
-    text = results_file.read().decode("utf-8", errors="ignore")
-    reader = csv.DictReader(StringIO(text))
-    rows = [r for r in reader]
+results_files = st.file_uploader(
+    "Upload results files (CSV or ZIP, one or many)",
+    type=["csv", "zip"],
+    key="results_upload",
+    accept_multiple_files=True,
+)
+if results_files:
+    rows = []
+    zip_summaries = []
+    for file in results_files:
+        name = (file.name or "").lower()
+        blob = file.read()
+        if name.endswith(".zip"):
+            parsed = parse_results_zip(blob, filename=file.name)
+            rows.extend(parsed.rows)
+            zip_summaries.append(parsed.summary)
+        else:
+            text = blob.decode("utf-8", errors="ignore")
+            reader = csv.DictReader(StringIO(text))
+            rows.extend([r for r in reader])
+
+    saved_rows = record_results_rows(rows)
+    st.info(f"Stored {saved_rows} result rows into archive from {len(results_files)} file(s).")
+
+    if zip_summaries:
+        st.markdown("#### ZIP Parse Summary")
+        st.dataframe(zip_summaries, use_container_width=True, hide_index=True)
+
+    grouped_counts: dict[tuple[str, str], int] = {}
+    for r in rows:
+        k = (r.get("track", "").strip(), r.get("date", "").strip())
+        if not k[0] or not k[1]:
+            continue
+        grouped_counts[k] = grouped_counts.get(k, 0) + 1
+    if grouped_counts:
+        st.markdown("#### Uploaded Result Batches (by track/date)")
+        summary_rows = [
+            {"track": k[0], "date": k[1], "rows": v}
+            for k, v in sorted(grouped_counts.items(), key=lambda x: (x[0][0], x[0][1]))
+        ]
+        st.dataframe(summary_rows, use_container_width=True, hide_index=True)
 
     profile = learn_from_results(rows)
+
+    compare_track = archive_track if archive_track else card_track
+    compare_date = archive_date if archive_date else card_date
+    comparison_rows = compare_card_predictions_to_results(compare_track, compare_date)
+    if comparison_rows:
+        st.markdown(f"#### Predictions vs Results: {compare_track} {compare_date}")
+        st.dataframe(comparison_rows, use_container_width=True, hide_index=True)
 
     if use_openai_learning:
         factor_keys = [f.key for f in DEFAULT_FACTORS]
