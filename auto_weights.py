@@ -14,7 +14,7 @@ def detect_surface(surface_code: str) -> str:
     return "other"
 
 
-def recommended_weights(factor_keys: list[str], surface: str, pace_scenario: str) -> Dict[str, float]:
+def recommended_weights(factor_keys: list[str], surface: str, pace_scenario: str, learning_profile: Dict[str, float] | None = None) -> Dict[str, float]:
     weights = {k: 1.0 for k in factor_keys}
 
     # Surface-driven adjustments
@@ -45,6 +45,12 @@ def recommended_weights(factor_keys: list[str], surface: str, pace_scenario: str
         weights["recent_late_pace"] = min(weights.get("recent_late_pace", 1.0), 0.95)
     else:
         weights["pace_par_avg"] = max(weights.get("pace_par_avg", 1.0), 1.15)
+
+    # Apply learning multipliers (if any)
+    learning_profile = learning_profile or {}
+    for key, mult in learning_profile.items():
+        if key in weights:
+            weights[key] = float(weights[key]) * float(mult)
 
     # Clamp to slider range
     for k, v in list(weights.items()):

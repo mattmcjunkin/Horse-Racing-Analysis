@@ -43,3 +43,18 @@ For best results, include columns like:
 - Enable **Auto-adjust weights by surface + pace** in the sidebar.
 - The app reads race surface (dirt/turf/other) and a preliminary AI pace scenario (Fast/Moderate/Slow), then auto-populates sliders with a matching profile.
 - You can still manually override any slider afterward.
+
+## Track dropdown + card storage
+- Select from a US track dropdown to set card context.
+- Race labels include **surface and distance** for easier race identification.
+- Save predictions for all races on a card (track/date) and review them later in-app.
+
+## Learning from results
+- Upload official results CSV (`track,date,race_number,winner_program` or `winner_horse`).
+- The app compares outcomes vs stored predictions and updates a lightweight learning profile used by auto-weight recommendations.
+
+## OpenAI-assisted learning (optional)
+- In the results upload section, enable **Use OpenAI to refine factor multipliers**.
+- Provide `OPENAI_API_KEY` via environment (or paste key in the app) and upload results.
+- The app sends summarized historical prediction/results context to OpenAI and receives factor multipliers, then stores them in the local learning profile.
+- If no key/package is available, the app gracefully falls back to local heuristic learning only.
