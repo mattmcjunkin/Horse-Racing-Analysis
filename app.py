@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import streamlit as st
 
+from auto_weights import detect_surface, recommended_weights
 from brisnet_parser import group_by_race, parse_content
 from pace_ai import build_pace_map, classify_race_pace
 from scoring import DEFAULT_FACTORS, compute_scores
@@ -82,14 +83,34 @@ adjustment_scale = st.sidebar.slider(
     step=1.0,
 )
 
+# Preliminary pace read on neutral settings for auto-weight guidance
+neutral_weights = {f.key: 1.0 for f in DEFAULT_FACTORS}
+prelim = compute_scores(selected_records, neutral_weights, adjustment_scale=adjustment_scale)
+prelim_pace = classify_race_pace(prelim)
+surface = detect_surface(selected_records[0].get_text(7)) if selected_records else "unknown"
+
+auto_mode = st.sidebar.toggle("Auto-adjust weights by surface + pace", value=False)
+if auto_mode:
+    rec = recommended_weights([f.key for f in DEFAULT_FACTORS], surface, prelim_pace.label)
+    fingerprint = f"{selected_key}|{surface}|{prelim_pace.label}"
+    if st.session_state.get("_auto_fp") != fingerprint:
+        for factor in DEFAULT_FACTORS:
+            st.session_state[f"weight_{factor.key}"] = rec.get(factor.key, 1.0)
+        st.session_state["_auto_fp"] = fingerprint
+    st.sidebar.caption(f"Auto profile: surface={surface}, projected pace={prelim_pace.label}")
+
 weights: dict[str, float] = {}
 for factor in DEFAULT_FACTORS:
+    key = f"weight_{factor.key}"
+    if key not in st.session_state:
+        st.session_state[key] = 1.0
     weights[factor.key] = st.sidebar.slider(
         factor.label,
         min_value=0.0,
         max_value=2.0,
-        value=1.0,
+        value=float(st.session_state[key]),
         step=0.05,
+        key=key,
     )
 
 result = compute_scores(selected_records, weights, adjustment_scale=adjustment_scale)

@@ -38,3 +38,8 @@ For best results, include columns like:
 - The app classifies each selected race as **Fast**, **Moderate**, or **Slow** pace based on an AI-style heuristic over early pace and run-style pressure.
 - It then builds a **pace map** with predicted start position and finish position for every horse in the race.
 - The pace map combines early pace, late pace, run style, and proprietary figure strength.
+
+## Auto-adjusted weights
+- Enable **Auto-adjust weights by surface + pace** in the sidebar.
+- The app reads race surface (dirt/turf/other) and a preliminary AI pace scenario (Fast/Moderate/Slow), then auto-populates sliders with a matching profile.
+- You can still manually override any slider afterward.
