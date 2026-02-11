@@ -33,3 +33,8 @@ streamlit run app.py
 ## DRF column hints
 For best results, include columns like:
 `horse_name, track, date/race_date, race_number, post_position, program, trainer, jockey, prime_power, speed_par, days_since_last, best_speed_life, pace_2f, pace_4f, pace_6f, late_pace, bris_speed`.
+
+## AI pace component
+- The app classifies each selected race as **Fast**, **Moderate**, or **Slow** pace based on an AI-style heuristic over early pace and run-style pressure.
+- It then builds a **pace map** with predicted start position and finish position for every horse in the race.
+- The pace map combines early pace, late pace, run style, and proprietary figure strength.

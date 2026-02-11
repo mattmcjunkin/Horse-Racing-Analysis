@@ -85,6 +85,7 @@ def compute_scores(records: list[HorseRecord], weights: dict[str, float], adjust
             "jockey": record.jockey,
             "post": record.get_text(4),
             "program": record.get_text(43),
+            "run_style": record.get_text(210),
             "bris_speed_figure": _bris_baseline(record),
         }
         for factor in DEFAULT_FACTORS:

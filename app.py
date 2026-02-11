@@ -3,6 +3,7 @@ from __future__ import annotations
 import streamlit as st
 
 from brisnet_parser import group_by_race, parse_content
+from pace_ai import build_pace_map, classify_race_pace
 from scoring import DEFAULT_FACTORS, compute_scores
 
 st.set_page_config(page_title="Horse Racing Figure Lab", page_icon="🏇", layout="wide")
@@ -13,6 +14,7 @@ st.markdown(
     .block-container {padding-top: 1.2rem;}
     .hero {padding: 1rem 1.2rem; border-radius: 12px; background: linear-gradient(90deg,#1f2937,#334155); color: white; margin-bottom: 1rem;}
     .small-note {color: #6b7280; font-size: 0.9rem;}
+    .pill {display:inline-block; padding:0.3rem 0.7rem; border-radius:999px; background:#e2e8f0; margin-right:0.4rem;}
     </style>
     """,
     unsafe_allow_html=True,
@@ -40,6 +42,7 @@ with right:
 - **BRISNET:** single-file comma-delimited rows.
 - **DRF:** CSV/TSV/pipe with headers (ex: `horse_name`, `track`, `race_number`, `pace_2f`).
 - Proprietary figure = BRIS baseline ± weighted interpretation adjustment.
+- AI pace engine classifies race shape and creates a pace map.
         """
     )
 
@@ -94,10 +97,20 @@ if not result:
     st.warning("No rows returned for selected race.")
     st.stop()
 
+pace_scenario = classify_race_pace(result)
+pace_map = build_pace_map(result, top_n=len(result))
+
 leader = result[0]
 st.success(
     f"Projected Winner: **{leader['horse']}** | Program {leader['program']} | Post {leader['post']} | "
     f"Proprietary Figure {leader['proprietary_speed_figure']:.1f} (BRIS {leader['bris_speed_figure']:.1f}, Δ {leader['figure_delta_vs_bris']:+.1f})"
+)
+
+st.markdown(
+    f"<span class='pill'><b>AI Pace Scenario:</b> {pace_scenario.label}</span>"
+    f"<span class='pill'><b>Confidence:</b> {pace_scenario.confidence:.0%}</span>"
+    f"<span class='pill'>{pace_scenario.reason}</span>",
+    unsafe_allow_html=True,
 )
 
 st.subheader("Ranked Field (BRIS Scale + Proprietary Adjustment)")
@@ -105,6 +118,7 @@ display_columns = [
     "horse",
     "program",
     "post",
+    "run_style",
     "trainer",
     "jockey",
     "bris_speed_figure",
@@ -118,6 +132,9 @@ display_columns = [
 
 table_rows = [{k: row.get(k, "") for k in display_columns} for row in result]
 st.dataframe(table_rows, use_container_width=True, hide_index=True)
+
+st.subheader("AI Pace Map (Predicted Start vs Finish)")
+st.dataframe(pace_map, use_container_width=True, hide_index=True)
 
 st.subheader("How your weights changed the BRIS figure")
 horse_names = [row["horse"] for row in result]
