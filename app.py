@@ -55,7 +55,10 @@ if not records:
 
 race_map = group_by_race(records)
 race_keys = list(race_map.keys())
-race_labels = [f"{k[0]} | {k[1]} | Race {k[2]} ({len(v)} horses)" for k in race_keys]
+race_labels = [
+    f"{k[0]} | {k[1]} | Race {k[2]} ({len(race_map[k])} horses)"
+    for k in race_keys
+]
 
 c1, c2, c3 = st.columns([1, 1, 1])
 c1.metric("Records Loaded", len(records))
